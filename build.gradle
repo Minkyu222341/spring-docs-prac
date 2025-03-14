@@ -1,67 +1,93 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.0.5'
-    id 'io.spring.dependency-management' version '1.1.0'
-    id "org.asciidoctor.jvm.convert" version "3.3.2"
+    id 'org.springframework.boot' version '3.0.5'             // Spring Boot 플러그인
+    id 'io.spring.dependency-management' version '1.1.0'       // Spring 의존성 관리 플러그인
+    id "org.asciidoctor.jvm.convert" version "3.3.2"          // AsciiDoctor 변환 플러그인
 }
 
-group = 'practice'
-version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '17'
+group = 'com.prac'                                           // 그룹 ID
+version = '0.0.1-SNAPSHOT'                                   // 버전
+sourceCompatibility = '17'                                   // Java 소스 호환성
 
+// 설정 구성 정의
 configurations {
     compileOnly {
         extendsFrom annotationProcessor
     }
-    asciidoctorExtensions
+    asciidoctorExtensions                                    // AsciiDoctor 확장 의존성 설정
 }
 
 repositories {
-    mavenCentral()
+    mavenCentral()                                          // Maven 중앙 저장소 사용
 }
 
+// 스니펫 및 문서 디렉토리 설정
 ext {
-    set('snippetsDir', file("build/generated-snippets"))
+    set('snippetsDir', file("build/generated-snippets"))    // API 스니펫 디렉토리
+    set('asciidocDir', file("src/docs/asciidoc"))           // AsciiDoc 소스 파일 디렉토리
 }
 
 dependencies {
+    // Spring Boot 의존성
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // Lombok
     compileOnly 'org.projectlombok:lombok'
-    runtimeOnly 'com.h2database:h2'
     annotationProcessor 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
+
+    // 데이터베이스
+    runtimeOnly 'com.h2database:h2'
+
+    // 테스트 의존성
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.0'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.0'
+    // JUnit 5 의존성 (명시적 추가)
+    testImplementation platform('org.junit:junit-bom:5.8.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
 
+    // Spring REST Docs 의존성
+    testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'  // MockMvc 지원
+    asciidoctorExtensions 'org.springframework.restdocs:spring-restdocs-asciidoctor' // AsciiDoctor 확장
 
-    testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
-    asciidoctorExtensions 'org.springframework.restdocs:spring-restdocs-asciidoctor'
-    testImplementation 'org.springframework.restdocs:spring-restdocs-asciidoctor'
-
-    // Optional: If you want to use WebTestClient instead of MockMvc
+    // WebTestClient 사용 시 추가할 수 있는 의존성 (필요한 경우 주석 해제)
     // implementation 'org.springframework.boot:spring-boot-starter-webflux'
     // testImplementation 'org.springframework.restdocs:spring-restdocs-webtestclient'
 }
 
+// 테스트 태스크 설정
 test {
-    useJUnitPlatform()
-    outputs.dir snippetsDir
+    useJUnitPlatform()                                       // JUnit 5 사용
+    outputs.dir snippetsDir                                  // 스니펫 출력 디렉토리 설정
+    testLogging {
+        events "passed", "skipped", "failed"                 // 테스트 로깅 설정
+    }
 }
 
+// AsciiDoctor 태스크 설정
 asciidoctor {
-    inputs.dir snippetsDir
-    configurations 'asciidoctorExtensions'
-    dependsOn test
+    inputs.dir snippetsDir                                   // 스니펫 입력 디렉토리
+    configurations 'asciidoctorExtensions'                   // AsciiDoctor 확장 설정
+    dependsOn test                                           // 테스트 태스크 이후 실행
+
+    sourceDir asciidocDir                                    // AsciiDoc 소스 디렉토리
+    outputDir file("build/docs/asciidoc")                    // 출력 디렉토리
+
+    // AsciiDoctor 속성 설정
+    attributes 'snippets': snippetsDir,
+            'source-highlighter': 'highlightjs',          // 코드 하이라이트 설정
+            'toc': 'left',                                // 목차 위치
+            'toclevels': '3',                             // 목차 레벨
+            'sectlinks': 'true'                           // 섹션 링크 설정
 }
 
+// bootJar 태스크 설정 (최종 JAR 파일에 문서 포함)
 bootJar {
-    dependsOn asciidoctor
-    from ("${asciidoctor.outputDir}/html5") {
-        into 'static/docs'
+    dependsOn asciidoctor                                    // AsciiDoctor 태스크 이후 실행
+    from ("${asciidoctor.outputDir}/html5") {                // HTML 문서를 JAR에 포함
+        into 'static/docs'                                   // JAR 내 문서 경로
     }
 }

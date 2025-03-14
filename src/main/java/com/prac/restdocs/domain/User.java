@@ -25,7 +25,9 @@ public class User {
 
   // 기본 생성자, Getter/Setter 생략
 
-  public User(String name, String email) {
+  @Builder
+  public User(Long id, String name, String email) {
+    this.id = id;
     this.name = name;
     this.email = email;
   }

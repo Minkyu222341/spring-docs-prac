@@ -1,0 +1,28 @@
+= REST API 문서
+:doctype: book
+:icons: font
+:source-highlighter: highlightjs
+:toc: left
+:toclevels: 4
+:sectlinks:
+:operation-curl-request-title: 요청 예시
+:operation-http-response-title: 응답 예시
+
+[[overview]]
+== 개요
+
+이 문서는 REST API에 대한 설명을 제공합니다.
+
+[[api-list]]
+== API 목록
+
+[[user-api]]
+=== 사용자 API
+
+==== 모든 사용자 조회
+
+operation::users-get-all[snippets='http-request,http-response,response-fields']
+
+==== 사용자 생성
+
+operation::users-create[snippets='http-request,http-response,request-fields,response-fields']

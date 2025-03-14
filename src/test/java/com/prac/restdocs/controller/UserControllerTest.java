@@ -1,143 +1,117 @@
 package com.prac.restdocs.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.prac.restdocs.domain.User;
-import com.prac.restdocs.domain.UserRequestDto;
-import com.prac.restdocs.service.UserService;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.restdocs.RestDocumentationContextProvider;
-import org.springframework.restdocs.RestDocumentationExtension;
-import org.springframework.restdocs.headers.HeaderDocumentation;
-import org.springframework.restdocs.mockmvc.MockMvcRestDocumentation;
-import org.springframework.restdocs.mockmvc.RestDocumentationResultHandler;
-import org.springframework.restdocs.operation.preprocess.Preprocessors;
-import org.springframework.restdocs.payload.JsonFieldType;
-import org.springframework.restdocs.payload.PayloadDocumentation;
-import org.springframework.restdocs.request.RequestDocumentation;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.WebApplicationContext;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.when;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
+import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
+import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.Arrays;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
-import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
-import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
-import static org.springframework.restdocs.payload.PayloadDocumentation.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
-@ExtendWith({SpringExtension.class, RestDocumentationExtension.class})
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prac.restdocs.domain.User;
+import com.prac.restdocs.domain.UserRequestDto;
+import com.prac.restdocs.service.UserService;
+
 @WebMvcTest(UserController.class)
 @AutoConfigureRestDocs
-class UserControllerTest {
+@Import(RestDocsConfiguration.class)
+public class UserControllerTest {
 
-  @Autowired
-  private MockMvc mockMvc;
+    @Autowired
+    private MockMvc mockMvc;
 
-  @Autowired
-  private ObjectMapper objectMapper;
+    @MockBean
+    private UserService userService;
 
-  @MockBean
-  private UserService userService;
+    @Autowired
+    private ObjectMapper objectMapper;
 
-  private RestDocumentationResultHandler document;
+    @Test
+    @DisplayName("모든 사용자 조회 API 테스트")
+    public void getAllUsersTest() throws Exception {
+        // given
+        User user1 = User.builder()
+                .name("홍길동")
+                .email("hong@example.com")
+                .build();
+        User user2 = User.builder()
+                .name("김철수")
+                .email("kim@example.com")
+                .build();
 
-  @BeforeEach
-  void setUp(WebApplicationContext webApplicationContext, RestDocumentationContextProvider restDocumentation) {
+        List<User> users = Arrays.asList(user1, user2);
+        given(userService.getAllUsers()).willReturn(users);
 
-    mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
-            .apply(MockMvcRestDocumentation.documentationConfiguration(restDocumentation))
-            .alwaysDo(document)
-            .build();
+        // when
+        ResultActions result = mockMvc.perform(
+                get("/users")
+                        .contentType(MediaType.APPLICATION_JSON));
 
+        // then
+        result
+                .andExpect(status().isOk())
+                .andDo(document("users-get-all",
+                        responseFields(
+                                fieldWithPath("[].id").description("사용자 ID"),
+                                fieldWithPath("[].name").description("사용자 이름"),
+                                fieldWithPath("[].email").description("사용자 이메일")
+                        )
+                ));
+    }
 
-    this.document = MockMvcRestDocumentation.document("{method-name}",
-            Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
-            Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
-            HeaderDocumentation.requestHeaders(
-                    HeaderDocumentation.headerWithName("Content-Type").description("요청 본문의 컨텐츠 타입")
-            ),
-            HeaderDocumentation.responseHeaders(
-                    HeaderDocumentation.headerWithName("Content-Type").description("응답 본문의 컨텐츠 타입")
-            ),
-            RequestDocumentation.pathParameters(
-                    RequestDocumentation.parameterWithName("id").description("조회할 사용자의 ID")
-            ),
-            PayloadDocumentation.requestFields(
-                    PayloadDocumentation.fieldWithPath("name").type(JsonFieldType.STRING).description("사용자의 이름"),
-                    PayloadDocumentation.fieldWithPath("email").type(JsonFieldType.STRING).description("사용자의 이메일 주소")
-            ),
-            PayloadDocumentation.responseFields(
-                    PayloadDocumentation.fieldWithPath("name").type(JsonFieldType.STRING).description("사용자의 이름"),
-                    PayloadDocumentation.fieldWithPath("email").type(JsonFieldType.STRING).description("사용자의 이메일 주소")
-            )
-    );
-  }
+    @Test
+    @DisplayName("사용자 생성 API 테스트")
+    public void createUserTest() throws Exception {
+        // given (준비): 테스트에 필요한 데이터 준비
+        UserRequestDto requestDto = UserRequestDto.builder()
+                .name("홍길동")
+                .email("hong@example.com")
+                .build();
 
-  @Test
-  void testGetAllUsers() throws Exception {
-    // given
-    User user1 = new User("John Doe", "john.doe@example.com");
-    User user2 = new User("Jane Smith", "jane.smith@example.com");
-    List<User> users = Arrays.asList(user1, user2);
+        User createdUser = User.builder()
+                .name("홍길동")
+                .email("hong@example.com")
+                .build();
 
-    given(userService.getAllUsers()).willReturn(users);
+        when(userService.createUser(any(UserRequestDto.class))).thenReturn(createdUser);
 
-    // when
-    mockMvc.perform(get("/users"))
-            .andExpect(status().isOk())
-            .andDo(document("users/get-all-users",
-                    responseFields(
-                            fieldWithPath("[].name").type(JsonFieldType.STRING).description("사용자의 이름"),
-                            fieldWithPath("[].email").type(JsonFieldType.STRING).description("사용자의 이메일 주소")
-                    )
-            ));
+        // when
+        ResultActions result = mockMvc.perform(
+                post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)));
 
-    // then
-    verify(userService, times(1)).getAllUsers();
-  }
-
-  @Test
-  void testCreateUser() throws Exception {
-    // given
-    UserRequestDto requestDto = new UserRequestDto();
-    requestDto.setName("John Doe");
-    requestDto.setEmail("john.doe@example.com");
-
-    User createdUser = new User("John Doe", "john.doe@example.com");
-
-    given(userService.createUser(any(UserRequestDto.class))).willReturn(createdUser);
-
-    // when
-    mockMvc.perform(post("/users")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(requestDto)))
-            .andExpect(status().isOk())
-            .andDo(document("users/create-user",
-                    requestFields(
-                            fieldWithPath("name").type(JsonFieldType.STRING).description("사용자의 이름"),
-                            fieldWithPath("email").type(JsonFieldType.STRING).description("사용자의 이메일 주소")
-                    ),
-                    responseFields(
-                            fieldWithPath("name").type(JsonFieldType.STRING).description("사용자의 이름"),
-                            fieldWithPath("email").type(JsonFieldType.STRING).description("사용자의 이메일 주소")
-                    )
-            ));
-
-    // then
-    verify(userService, times(1)).createUser(any(UserRequestDto.class));
-  }
+        // then
+        result
+                .andExpect(status().isOk())
+                .andDo(document("users-create",
+                        requestFields(
+                                fieldWithPath("name").description("사용자 이름"),
+                                fieldWithPath("email").description("사용자 이메일")
+                        ),
+                        responseFields(
+                                fieldWithPath("id").description("사용자 ID"),
+                                fieldWithPath("name").description("사용자 이름"),
+                                fieldWithPath("email").description("사용자 이메일")
+                        )
+                ));
+    }
 }
